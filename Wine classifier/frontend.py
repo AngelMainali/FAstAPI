@@ -20,7 +20,7 @@ alcohol = st.number_input("Alcohol", value=9.4)
 
 
 if st.button("Predict Quality"):
-    url = "http://127.0.0.1:8000/predict"  
+    url = "http://127.0.0.1:8000/predict_wine"  
     inputdata = {
         "fixed_acidity": fixed_acidity,
         "volatile_acidity": volatile_acidity,

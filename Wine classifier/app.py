@@ -28,7 +28,7 @@ class UserInput(BaseModel):
 
 from fastapi import HTTPException
 
-@app.post('/predict')
+@app.post('/predict_wine')
 def predict(data: UserInput):
     try:
         input_df = pd.DataFrame([{
