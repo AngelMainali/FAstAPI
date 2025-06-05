@@ -1,37 +1,31 @@
 from fastapi.responses import JSONResponse
-from fastapi import FastAPI, Path, HTTPException, Query
-from pydantic import BaseModel, Field, computed_field
-from typing import Annotated, Literal, Optional
-import pickle
+from fastapi import FastAPI, HTTPException
 import pandas as pd
-
-with open(r'trained_model.sav', 'rb') as f:
-    model = pickle.load(f)
-
+from schema.user_input import UserInput
+from model.predict import predict_output,model,MODEL_VERSION
+from schema.prediction_response import PredictionResponse
 
 app=FastAPI() 
 #uvicorn app:app --reload
 
-
-class UserInput(BaseModel):
-    fixed_acidity:Annotated[float, Field(...,gt=0,)]
-    volatile_acidity:Annotated[float, Field(...,)]
-    citric_acid:Annotated[float, Field(...,)]
-    residual_sugar:Annotated[float, Field(...,)]
-    chlorides:Annotated[float, Field(...,)]
-    free_sulfur_dioxide:Annotated[float, Field(...,)]
-    total_sulfur_dioxide:Annotated[float, Field(...,)]
-    density:Annotated[float, Field(...,)]
-    pH:Annotated[float, Field(...,gt=-1,lt=8)]
-    sulphates:Annotated[float, Field(...,)]
-    alcohol:Annotated[float, Field(...,)]
-
 from fastapi import HTTPException
 
-@app.post('/predict_wine')
+@app.get('/')
+def home():
+    return {"message": "Welcome to the Wine Classifier API"}
+
+@app.get('/health')
+def health_check():
+    return {
+        "status": "OK", 
+        "version": MODEL_VERSION,
+        "model_loaded": model is not None,
+        }
+
+@app.post('/predict_wine',response_model=PredictionResponse)
 def predict(data: UserInput):
     try:
-        input_df = pd.DataFrame([{
+        user_input = pd.DataFrame([{
             'fixed acidity': data.fixed_acidity,
             'volatile acidity': data.volatile_acidity,
             'citric acid': data.citric_acid,
@@ -45,15 +39,15 @@ def predict(data: UserInput):
             'alcohol': data.alcohol
         }])
         
-        prediction = model.predict(input_df)[0]
-        prediction = int(prediction)  # Convert from NumPy int64 to native int
-
-        # Determine quality
+        result = predict_output(user_input)
+        prediction = int(result['predicted_category'])
         quality_message = "Good Quality Wine" if prediction == 1 else "Bad Quality Wine"
 
         return JSONResponse(status_code=200, content={
             'prediction': prediction,
-            'message': quality_message
+            'message': quality_message,
+            'confidence': round(result['confidence'], 4),
+            'class_probabilities': result['class_probabilites']
         })
     
     except Exception as e:
